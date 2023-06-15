@@ -35,10 +35,7 @@ def calc_factor(index, top_index, original_dimension_value):
 # estimate the factor to multiply the dimensions by
 # in order to shrink a low-res image to its original size
 def estimate_downsizing_factor(img, stop_at=5):
-    img_shape_0 = img.shape[0]
-    img_shape_1 = img.shape[1]
-    
-    ceiling_dimension = min(img_shape_1, img_shape_0)
+    ceiling_dimension = min(img.shape[0], img.shape[1])
     
     top_index = int(ceiling_dimension / 2)
     
@@ -64,7 +61,7 @@ def estimate_downsizing_factor(img, stop_at=5):
     return calc_factor(highest_d2, top_index, ceiling_dimension)
 
 def main():
-    image = cv2.imread("sprite_sheets/underwater_sprite_sheet5/underwater_sprite_sheet5_1_2.png")
+    image = cv2.imread("image.png")
     estimated_factor = estimate_downsizing_factor(image)
     print(estimated_factor)
 
