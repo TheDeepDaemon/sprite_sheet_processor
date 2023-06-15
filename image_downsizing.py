@@ -29,18 +29,20 @@ def calc_information_loss_at_size(image, factor):
     
     return compare_images(resized_image, image)
 
-def calc_factor(index, max_value):
-    return (max_value - index - 1) / max_value
+def calc_factor(index, top_index, original_dimension_value):
+    return (top_index - index) / original_dimension_value
 
-def find_original_size(img, stop_at=5):
+# estimate the factor to multiply the dimensions by
+# in order to shrink a low-res image to its original size
+def estimate_downsizing_factor(img, stop_at=5):
     img_shape_0 = img.shape[0]
     img_shape_1 = img.shape[1]
     
-    using_dim_1 = (img_shape_1 < img_shape_0)
-    
     ceiling_dimension = min(img_shape_1, img_shape_0)
     
-    n_results = ceiling_dimension - stop_at
+    top_index = int(ceiling_dimension / 2)
+    
+    n_results = top_index - stop_at
     
     results = np.zeros(n_results, dtype=float)
     
@@ -48,11 +50,7 @@ def find_original_size(img, stop_at=5):
 
     for i in range(n_results):
         # calculate the size from the index
-        if using_dim_1:
-            factor = calc_factor(i, img_shape_1)
-        else:
-            factor = calc_factor(i, img_shape_0)
-        
+        factor = calc_factor(i, top_index, ceiling_dimension)
         result = calc_information_loss_at_size(img, factor)
         results[i] = result
     
@@ -63,17 +61,12 @@ def find_original_size(img, stop_at=5):
     highest_d2 = np.argmax(second_deltas) + 1
     
     # calculate the size from the index
-    if using_dim_1:
-        factor = calc_factor(highest_d2, img_shape_1)
-    else:
-        factor = calc_factor(highest_d2, img_shape_0)
-    
-    return resize_dimensions(img.shape, factor)
+    return calc_factor(highest_d2, top_index, ceiling_dimension)
 
 def main():
-    image = cv2.imread("image.png")
-    original_size = find_original_size(image)
-    print(original_size)
+    image = cv2.imread("sprite_sheets/underwater_sprite_sheet5/underwater_sprite_sheet5_1_2.png")
+    estimated_factor = estimate_downsizing_factor(image)
+    print(estimated_factor)
 
 if __name__ == "__main__":
     main()

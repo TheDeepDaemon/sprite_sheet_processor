@@ -2,7 +2,7 @@ from PIL import Image, ImageOps
 import os
 import cv2
 import numpy as np
-from image_downsizing import find_original_size
+from image_downsizing import estimate_downsizing_factor, resize_dimensions
 
 def remove_transparency(img):
     """Remove transparent edges from the image."""
@@ -28,14 +28,15 @@ def no_alpha_ff(file_format):
     else:
         return False
 
-def split_sprite_sheet(fpath, sprites_x, sprites_y, shrink_to_original=False, file_format="png"):
+def split_sprite_sheet(fpath, sprites_x, sprites_y, shrink_to_original=False, file_format="png", output_dir=None):
     
     # file stuff
     split_path = os.path.split(fpath)
     input_dir = split_path[0]
     input_fname = os.path.splitext(split_path[1])[0]
-
-    output_dir = os.path.join(input_dir, input_fname)
+    
+    if output_dir is None:
+        output_dir = os.path.join(input_dir, input_fname)
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -52,7 +53,10 @@ def split_sprite_sheet(fpath, sprites_x, sprites_y, shrink_to_original=False, fi
     sprite_height = int(sprite_sheet_height / sprites_y)
     
     no_alpha = no_alpha_ff(file_format)
-
+    
+    sprite_list = []
+    factors = []
+    
     for i in range(sprites_y):
         for j in range(sprites_x):
             # Calculate the position of the current sprite
@@ -65,32 +69,43 @@ def split_sprite_sheet(fpath, sprites_x, sprites_y, shrink_to_original=False, fi
             sprite = sprite_sheet.crop((left, top, right, bottom))
             
             # remove transparency
-            sprite_image = remove_transparency(sprite)
+            sprite = remove_transparency(sprite)
+            
+            sprite_list.append((sprite, i, j))
             
             if shrink_to_original:
-                sprite_image_arr = np.array(sprite_image)
-                
-                original_size = find_original_size(sprite_image_arr / 255.0)
-                
-                sprite_image_arr = cv2.resize(sprite_image_arr, (original_size[1], original_size[0]), interpolation = cv2.INTER_AREA)
-                sprite_image = Image.fromarray(np.uint8(sprite_image_arr)).convert('RGBA')
-            
-            # add border
-            expanded_image = ImageOps.expand(sprite_image, border=(1, 1, 1, 1), fill=(255, 255, 255, 0))
-            
-            if no_alpha:
-                # handle formats with no alpha with white background
-                solid_image = Image.new("RGBA", expanded_image.size, "WHITE")
-                solid_image.paste(expanded_image, mask=expanded_image)
-                expanded_image = solid_image.convert("RGB")
+                estimated_factor = estimate_downsizing_factor(np.array(sprite) / 255.0)
+                factors.append(estimated_factor)
+    
+    if len(factors) > 0:
+        factors = np.array(factors, dtype=float)
+        factor = np.median(factors)
+    
+    for sprite, i, j in sprite_list:
+        
+        if shrink_to_original:
+            sprite_arr = np.array(sprite)
+            original_size = resize_dimensions(sprite_arr.shape, factor)
+            sprite_arr = cv2.resize(sprite_arr, (original_size[1], original_size[0]), interpolation = cv2.INTER_AREA)
+            sprite = Image.fromarray(np.uint8(sprite_arr)).convert('RGBA')
+        
+        # add border
+        expanded_image = ImageOps.expand(sprite, border=(1, 1, 1, 1), fill=(255, 255, 255, 0))
+        output_image = expanded_image
+        
+        if no_alpha:
+            # handle formats with no alpha with white background
+            solid_image = Image.new("RGBA", output_image.size, "WHITE")
+            solid_image.paste(output_image, mask=output_image)
+            output_image = solid_image.convert("RGB")
 
-            # Save the sprite to a file
-            output_fname = '{}_{}_{}.{}'.format(input_fname, i, j, file_format)
-            output_fpath = os.path.join(output_dir, output_fname)
-            expanded_image.save(output_fpath)
+        # Save the sprite to a file
+        output_fname = '{}_{}_{}.{}'.format(input_fname, i, j, file_format)
+        output_fpath = os.path.join(output_dir, output_fname)
+        output_image.save(output_fpath)
 
 def main():
-    split_sprite_sheet("sprite_sheet.png", 4, 2, True)
+    split_sprite_sheet("sprite_sheets/underwater_sprite_sheet5.png", 3, 6, True)
 
 if __name__ == "__main__":
     main()
