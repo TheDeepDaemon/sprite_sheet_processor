@@ -19,4 +19,10 @@ def average_images_in_dir(dir_path, file_type):
 
     avg_img = average_images(images)
 
-    Image.fromarray(np.uint8(avg_img)).convert('RGBA').save("output.png")
+    return Image.fromarray(np.uint8(avg_img)).convert('RGBA')
+
+def main():
+    average_images_in_dir("split_sprites/example", "png").save("output.png")
+
+if __name__ == "__main__":
+    main()
