@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 from image_downsizing import estimate_downsizing_factor, resize_dimensions
 
-def remove_transparency(img):
+def remove_transparent_edges(img):
     """Remove transparent edges from the image."""
 
     # Only process if image has transparency 
@@ -22,24 +22,26 @@ def remove_transparency(img):
     else:
         return img
 
+def remove_low_alpha(img, cutoff=128):
+    img_arr = np.array(img)
+    for i in range(img_arr.shape[0]):
+        for j in range(img_arr.shape[1]):
+            pix = img_arr[i, j]
+            if pix[3] < cutoff:
+                img_arr[i, j, :] = 0
+    return Image.fromarray(np.uint8(img_arr)).convert('RGBA')
+
 def no_alpha_ff(file_format):
     if file_format == 'bmp' or file_format == 'jpg' or file_format == 'jpeg':
         return True
     else:
         return False
 
-def split_sprite_sheet(fpath, sprites_x, sprites_y, shrink_to_original=False, file_format="png", output_dir=None):
+def split_sprite_sheet(fpath, output_dir, sprites_x, sprites_y, shrink_to_original=False, file_format="png"):
     
     # file stuff
     split_path = os.path.split(fpath)
-    input_dir = split_path[0]
     input_fname = os.path.splitext(split_path[1])[0]
-    
-    if output_dir is None:
-        output_dir = os.path.join(input_dir, input_fname)
-
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
     
     # Open the sprite sheet
     sprite_sheet = Image.open(fpath)
@@ -69,7 +71,7 @@ def split_sprite_sheet(fpath, sprites_x, sprites_y, shrink_to_original=False, fi
             sprite = sprite_sheet.crop((left, top, right, bottom))
             
             # remove transparency
-            sprite = remove_transparency(sprite)
+            sprite = remove_transparent_edges(sprite)
             
             sprite_list.append((sprite, i, j))
             
@@ -91,13 +93,19 @@ def split_sprite_sheet(fpath, sprites_x, sprites_y, shrink_to_original=False, fi
         
         # add border
         expanded_image = ImageOps.expand(sprite, border=(1, 1, 1, 1), fill=(255, 255, 255, 0))
-        output_image = expanded_image
+        
+        # reduce the color palette
+        quantized_image = remove_low_alpha(expanded_image).quantize(16, kmeans=16)
+        quantized_image = quantized_image.convert('RGBA')
+        
+        # set the output
+        output_image = quantized_image
         
         if no_alpha:
             # handle formats with no alpha with white background
-            solid_image = Image.new("RGBA", output_image.size, "WHITE")
-            solid_image.paste(output_image, mask=output_image)
-            output_image = solid_image.convert("RGB")
+            background = Image.new('RGB', output_image.size, (255, 255, 255))
+            background.paste(output_image, mask=output_image.split()[3])
+            output_image = background
 
         # Save the sprite to a file
         output_fname = '{}_{}_{}.{}'.format(input_fname, i, j, file_format)
@@ -105,7 +113,7 @@ def split_sprite_sheet(fpath, sprites_x, sprites_y, shrink_to_original=False, fi
         output_image.save(output_fpath)
 
 def main():
-    split_sprite_sheet("sprite_sheets/underwater_sprite_sheet5.png", 3, 6, True)
+    split_sprite_sheet("sprite_sheets/underwater_sprite_sheet7.png", "bmp_files", 3, 2, True, 'bmp')
 
 if __name__ == "__main__":
     main()
