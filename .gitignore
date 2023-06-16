@@ -2,6 +2,5 @@ __pycache__
 venv
 bin
 bmp_files
-svg_files
-png_files
+depixelized
 sprite_sheets
