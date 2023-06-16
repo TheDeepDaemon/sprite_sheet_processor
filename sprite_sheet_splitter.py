@@ -113,7 +113,7 @@ def split_sprite_sheet(fpath, output_dir, sprites_x, sprites_y, shrink_to_origin
         output_image.save(output_fpath)
 
 def main():
-    split_sprite_sheet("sprite_sheets/underwater_sprite_sheet7.png", "bmp_files", 3, 2, True, 'bmp')
+    split_sprite_sheet("sprite_sheets/underwater_sprite_sheet7.png", "split_sprites", 3, 2, True, 'bmp')
 
 if __name__ == "__main__":
     main()
