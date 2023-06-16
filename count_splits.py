@@ -12,7 +12,8 @@ def alpha_sum(image, n_divisions, axis):
             total += np.sum(image[:, index, 3])
     return total
 
-def find_num_splits(image, min_divisions, max_divisions, axis):
+def find_num_splits(image, max_divisions, axis):
+    min_divisions = 1
     n = max_divisions - min_divisions
     
     lowest_alpha = float('inf')
@@ -26,3 +27,33 @@ def find_num_splits(image, min_divisions, max_divisions, axis):
             best_n_div = num_divisions
     
     return best_n_div
+
+def mark_division_lines(image, n_divisions, axis):
+    dim_size = image.shape[axis]
+    for i in range(n_divisions - 1):
+        index = int(dim_size * (i + 1) / n_divisions)
+        if axis == 0:
+            image[index, :, 0] = 255
+            image[index, :, 1] = 255
+            image[index, :, 2] = 255
+            image[index, :, 3] = 255
+        else:
+            image[:, index, 0] = 255
+            image[:, index, 1] = 255
+            image[:, index, 2] = 255
+            image[:, index, 3] = 255
+    Image.fromarray(np.uint8(image)).convert('RGBA').save("marked.png")
+
+def main():
+    fpath = "sprite_sheet.png"
+    image = Image.open(fpath)
+    
+    image_arr = np.array(image)
+    
+    rows = find_num_splits(image_arr, 16, 0)
+    cols = find_num_splits(image_arr, 16, 1)
+    
+    print(f"{rows} rows, {cols} cols")
+
+if __name__ == "__main__":
+    main()
